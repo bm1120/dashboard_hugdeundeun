@@ -1,0 +1,13 @@
+pandas
+fsspec
+numpy
+tqdm
+requests
+bs4
+db-dtypes
+shapely
+geopandas
+openpyxl
+dash
+plotly
+streamlit
