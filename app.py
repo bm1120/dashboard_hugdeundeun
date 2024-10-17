@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 app = dash.Dash(__name__)
 
 # Sample DataFrame - replace with your data
-ffinal = pd.read_csv('final.csv')
+ffinal = pd.read_csv('data/final.csv')
 # final = ffinal.query('deposit < 13000 & expected_time < 90').copy().sort_values('번호')
 final = ffinal.copy().sort_values('번호')
 
