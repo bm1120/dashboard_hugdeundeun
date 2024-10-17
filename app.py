@@ -272,8 +272,8 @@ def update_building_number_options(max_deposit, max_time, current_value):
 
 
 
-# server = app.server
+server = app.server
 
-# Run the app
-if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=8050, debug=True)
+# # Run the app
+# if __name__ == '__main__':
+#     app.run_server(host='0.0.0.0', port=8050, debug=True)
