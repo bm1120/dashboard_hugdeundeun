@@ -8,10 +8,7 @@ import plotly.graph_objects as go
 app = dash.Dash(__name__)
 
 # Sample DataFrame - replace with your data
-ffinal = pd.read_csv('data/final.csv')
-# final = ffinal.query('deposit < 13000 & expected_time < 90').copy().sort_values('번호')
-final = ffinal.copy().sort_values('번호')
-
+final = pd.read_csv('data/final.csv').copy().sort_values('번호')
 
 # Initial map figure
 fig = go.Figure()
@@ -37,7 +34,7 @@ fig.update_traces(
         lambda row: (
             f"<b>번호: {row['번호']}</b><br>"
             f"주소: {row['주소']}<br><br>"
-            f"가장가까운역: {row['near_station']}"
+            f"가장 가까운 역: {row['near_station']}"
         ), axis=1
     ),
     hoverinfo='text'
@@ -45,7 +42,7 @@ fig.update_traces(
 
 fig.update_layout(
     mapbox=dict(
-        accesstoken='mapbox_token',
+        accesstoken='your_mapbox_token',  # Add your Mapbox token here
         style='open-street-map',
         zoom=9,
         center=dict(lat=final.x.mean(), lon=final.y.mean())
@@ -53,22 +50,26 @@ fig.update_layout(
     margin={"r": 0, "t": 0, "l": 0, "b": 0}
 )
 
-# Define the layout with two columns side by side
+# Define the layout
 app.layout = html.Div([
     # First column for the map
     html.Div([
         html.H1(children='Map and Controls'),
-        # Input field for filtering the data based on deposit
+
+        # Input for max deposit
         html.Div([
             html.Label("최대 보증금(만원)", style={'marginRight': '10px'}),
             dcc.Input(id='min-deposit-input', type='number', value=30000, style={'marginBottom': '20px'})
         ]),  # Default to 0
 
+        # Input for max time
         html.Label("최대 통근시간(분)", style={'marginRight': '10px'}),
         dcc.Input(id='max-time-input', type='number', value=90, style={'marginBottom': '20px'}),  # Default to 0
-        
-        html.Div([html.Label("건물 표시색상"),
-                  dcc.Dropdown(
+
+        # Dropdown for color data
+        html.Div([
+            html.Label("건물 표시색상"),
+            dcc.Dropdown(
                 id='color-data-dropdown',
                 options=[
                     {'label': '보증금', 'value': 'deposit'},
@@ -78,12 +79,14 @@ app.layout = html.Div([
                 ],
                 value='deposit_m2',  # Default value for color bar data
                 clearable=False,
-                style={'width': '150px', 'display': 'inline-block', 'marginLeft': '5px', 'verticalAlign': 'top'}) # Inline style with margin
+                style={'width': '150px', 'display': 'inline-block', 'marginLeft': '5px', 'verticalAlign': 'top'}
+            )  # Inline style with margin
         ], style={'marginBottom': '10px', 'float': 'right'}),  # Add some margin below for spacing
 
-        
+        # Mapbox graph
         dcc.Graph(id='mapbox-graph', figure=fig, style={'height': '700px'}),
-        
+
+        # RadioItems for map style
         html.Div([
             dcc.RadioItems(
                 id='map-style-radio',
@@ -97,47 +100,37 @@ app.layout = html.Div([
                 inline=True,
                 style={'display': 'inline-block', 'verticalAlign': 'top'}  # Inline style
             )
-            
         ], style={'marginBottom': '10px'})
     ], style={'width': '60%', 'display': 'inline-block', 'verticalAlign': 'top'}),  # Map Column 70%
-    
+
     # Second column for the image and dropdown
     html.Div([
         html.H1("평면구조도"),
-        html.Div([html.Label("건물번호"), 
-                  dcc.Dropdown(
-            id='image-dropdown',
-            options=[
-                {'label': f'{num:03d}', 'value': f'{num:03d}'}
-                for num in final['번호'].values
-            ],
-            value='001',
-            clearable=False,
-            style={'width': '100px', 'display': 'inline-block', 'marginLeft': '20px', 'verticalAlign': 'top'}
-        )], style={'marginBottom': '10px',  'textAlign':'right'}),
+
+        # Image container for building structure
         html.Div(id='image-container', children=[
             html.Img(id='dynamic-image', style={'width': '100%', 'height': '400px'})  # Fixed size for the images
         ]),
-        
-        # New Div to display property details
-        html.Div(id='property-details', style={'padding-top': '20px', 'font-size': '18px', 'border': '1px solid #ddd', 'padding': '10px', 'backgroundColor': '#f9f9f9'})  # Style as needed
+
+        # Div to display property details
+        html.Div(id='property-details', style={'padding-top': '20px', 'font-size': '18px', 'border': '1px solid #ddd', 'padding': '10px', 'backgroundColor': '#f9f9f9'})
     ], style={'width': '35%', 'display': 'inline-block', 'padding-left': '2%', 'verticalAlign': 'top'})  # Image Column 30%
 ])
 
-# Callback to update the map's color, style, maintain zoom level, and center on selected building
+
+# Callback to update the map's color, style, and center based on user inputs
 @app.callback(
     Output('mapbox-graph', 'figure'),
     [Input('map-style-radio', 'value'),
      Input('color-data-dropdown', 'value'),
      Input('min-deposit-input', 'value'),
-     Input('max-time-input', 'value'),
-     Input('image-dropdown', 'value')],  # New input to track selected building
+     Input('max-time-input', 'value')],
     [State('mapbox-graph', 'relayoutData')]  # Track the current zoom level and center
 )
-def update_map(style, color_column, max_deposit, max_time, selected_building, relayout_data):
+def update_map(style, color_column, max_deposit, max_time, relayout_data):
     # Filter the data based on the deposit and time inputs
     filtered_data = final[(final['deposit'] <= max_deposit) & (final['expected_time'] <= max_time)]
-    
+
     # Update the map trace with the filtered data
     map_trace = go.Scattermapbox(
         lat=filtered_data.x,
@@ -176,22 +169,13 @@ def update_map(style, color_column, max_deposit, max_time, selected_building, re
         current_zoom = 9
         current_center = {'lat': filtered_data.x.mean(), 'lon': filtered_data.y.mean()}
 
-    # If a building is selected, center the map on its coordinates
-    if selected_building:
-        selected_row = filtered_data[filtered_data['번호'] == int(selected_building)]
-        if not selected_row.empty:
-            current_center = {
-                'lat': selected_row['x'].values[0],  # Latitude of the selected building
-                'lon': selected_row['y'].values[0]   # Longitude of the selected building
-            }
-
     # Update the layout with the style, zoom, and center
     fig.update_layout(
         mapbox=dict(
-            accesstoken='mapbox_token',
+            accesstoken='your_mapbox_token',
             style=style,
             zoom=current_zoom,  # Preserve the current zoom level
-            center=current_center  # Center the map on the selected building or current center
+            center=current_center  # Center the map on the current center
         ),
         margin={"r": 0, "t": 0, "l": 0, "b": 0}
     )
@@ -199,27 +183,29 @@ def update_map(style, color_column, max_deposit, max_time, selected_building, re
     return fig
 
 
-# Callback to update the image in the second column based on dropdown selection
+# Callback to update the image and details based on marker click in Mapbox
 @app.callback(
     [Output('dynamic-image', 'src'),
      Output('property-details', 'children')],
-    Input('image-dropdown', 'value')
+    Input('mapbox-graph', 'clickData')  # Capture click events on map markers
 )
-def update_image_and_details(selected_value):
-    # If no building is selected (i.e., selected_value is None), return placeholders
-    if selected_value is None:
+def update_image_and_details_from_click(clickData):
+    if clickData is None:
         return '', [html.P("No details available for this selection.")]
 
     try:
-        # Map the selected value to corresponding image URLs
-        image_urls = {f'{num:03d}': img_url for idx, num, img_url in final.filter(regex='번호|img').itertuples()}
+        # Get the building number from clickData
+        selected_number = clickData['points'][0]['text']  # The building number clicked
 
-        # Convert the selected value to an integer for comparison
-        selected_row = final[final['번호'] == int(selected_value)]
+        # Find the corresponding row in the DataFrame
+        selected_row = final[final['번호'] == int(selected_number)]
 
-        # Check if the selected row exists
         if not selected_row.empty:
             row = selected_row.iloc[0]
+
+            # Placeholder for mapping building number to image URL
+            image_urls = {f'{num:03d}': img_url for idx, num, img_url in final.filter(regex='번호|img').itertuples()}
+
             details = [
                 html.P(f"번호: {row['번호']}"),
                 html.P(f"주소: {row['주소']}"),
@@ -230,47 +216,15 @@ def update_image_and_details(selected_value):
                 html.P(f"회사까지 예상 소요 시간: {round(row['expected_time'], 1)}분"),
                 html.P(f"신청자수: {row['신청자수']}명")
             ]
-        else:
-            details = [html.P("No details available for this selection.")]
 
-        return image_urls.get(selected_value, ''), details
+            return image_urls.get(f'{int(selected_number):03d}', ''), details
+
+        else:
+            return '', [html.P("No details available for this selection.")]
 
     except Exception as e:
-        # Return empty image and error message in case of failure
+        # In case of error, return empty image and error message
         return '', [html.P(f"Error: {str(e)}")]
-
-
-# Callback to update the building number dropdown and its value based on filtered data
-@app.callback(
-    [Output('image-dropdown', 'options'),
-     Output('image-dropdown', 'value')],
-    [Input('min-deposit-input', 'value'),
-     Input('max-time-input', 'value')],
-    [State('image-dropdown', 'value')]  # Track the current selected value
-)
-def update_building_number_options(max_deposit, max_time, current_value):
-    # Filter the data based on the deposit and time inputs
-    filtered_data = final[(final['deposit'] <= max_deposit) & (final['expected_time'] <= max_time)]
-
-    # Convert the '번호' column to integers to ensure proper formatting
-    filtered_data['번호'] = filtered_data['번호'].astype(int)
-
-    # Generate the list of building numbers as options for the dropdown, formatted to 3 digits
-    options = [{'label': f'{num:03d}', 'value': f'{num:03d}'} for num in filtered_data['번호']]
-
-    # If no options are available after filtering, return an empty dropdown and value None
-    if not options:
-        return [], None
-
-    # Check if the current value is still valid after filtering
-    if current_value in [opt['value'] for opt in options]:
-        value = current_value  # Keep the current value if it's still valid
-    else:
-        value = options[0]['value']  # Otherwise, reset to the first available option
-
-    return options, value
-
-
 
 server = app.server
 
