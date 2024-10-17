@@ -151,6 +151,9 @@ def update_image(selected_value):
     }
     return image_urls.get(selected_value, '')
 
+
+server = app.server
+
 # Run the app
-if __name__ == '__main__':
-    app.run_server(debug=True)
+# if __name__ == '__main__':
+    # app.run_server(debug=True)
