@@ -8,8 +8,8 @@ import plotly.graph_objects as go
 app = dash.Dash(__name__)
 
 # Sample DataFrame - replace with your data
-ffinal = pd.read_csv('data/final_241007.csv')
-final = ffinal.query('deposit < 13000 & expected_time < 90').copy()
+ffinal = pd.read_csv('data/final.csv')
+final = ffinal.query('deposit < 13000 & expected_time < 90').copy().sort_values('번호')
 
 # Initial map figure
 fig = go.Figure()
@@ -35,11 +35,7 @@ fig.update_traces(
         lambda row: (
             f"<b>번호: {row['번호']}</b><br>"
             f"주소: {row['주소']}<br><br>"
-            f"주택유형: {row['주택유형']}<br>"
-            f"전용면적: {round(row['m2'] / 3.30579, 1)}평<br>"
-            f"보증금: {int(row['deposit'])}만원<br>"
-            f"가장가까운역까지 거리: {row['near_station']}까지 {int(row['distanceM_near_station'])}m<br>"
-            f"회사까지 예상 소요 시간: {round(row['expected_time'], 1)}분"
+            f"가장가까운역: {row['near_station']}"
         ), axis=1
     ),
     hoverinfo='text'
@@ -60,96 +56,123 @@ app.layout = html.Div([
     # First column for the map
     html.Div([
         html.H1(children='Map and Controls'),
-        dcc.RadioItems(
-            id='map-style-radio',
+        html.Div([html.Label("건물번호"), 
+                  dcc.Dropdown(
+            id='image-dropdown',
             options=[
-                {'label': 'Open Street Map', 'value': 'open-street-map'},
-                {'label': 'Carto Positron', 'value': 'carto-positron'},
-                {'label': 'Carto Darkmatter', 'value': 'carto-darkmatter'},
-                {'label': 'Stamen Terrain', 'value': 'stamen-terrain'}
+                {'label': f'{num:03d}', 'value': f'{num:03d}'}
+                for num in final['번호'].values
             ],
-            value='open-street-map',
-            inline=True
+            value='007',
+            clearable=False,
+            style={'width': '150px', 'display': 'inline-block', 'marginLeft': '20px', 'verticalAlign': 'top'}
         ),
-        dcc.Graph(id='mapbox-graph', figure=fig),
+        html.Label("표시색상"),
+                  dcc.Dropdown(
+                id='color-data-dropdown',
+                options=[
+                    {'label': '보증금', 'value': 'deposit'},
+                    {'label': '인접역까지 거리', 'value': 'distanceM_near_station'},
+                    {'label': '신청자수', 'value': '신청자수'},
+                    {'label': 'm2당 보증금', 'value': 'deposit_m2'}
+                ],
+                value='deposit_m2',  # Default value for color bar data
+                clearable=False,
+                style={'width': '180px', 'display': 'inline-block', 'marginLeft': '20px', 'verticalAlign': 'top'}) # Inline style with margin
+        ], style={'marginBottom': '10px'}),  # Add some margin below for spacing
+
+        html.Div([
+            dcc.RadioItems(
+                id='map-style-radio',
+                options=[
+                    {'label': 'Open Street Map', 'value': 'open-street-map'},
+                    {'label': 'Carto Positron', 'value': 'carto-positron'},
+                    {'label': 'Carto Darkmatter', 'value': 'carto-darkmatter'},
+                    {'label': 'Stamen Terrain', 'value': 'stamen-terrain'}
+                ],
+                value='open-street-map',
+                inline=True,
+                style={'display': 'inline-block', 'verticalAlign': 'top'}  # Inline style
+            )
+            
+        ], style={'marginBottom': '10px'}),
+        
+        dcc.Graph(id='mapbox-graph', figure=fig, style={'height': '700px'}),
+
         html.Label("Zoom Level"),
         dcc.Slider(
             id='zoom-slider',
             min=7,
             max=15,
-            value=10,
+            value=9,
             marks={i: str(i) for i in range(7, 16)},
             step=1
         )
-    ], style={'width': '70%', 'display': 'inline-block', 'verticalAlign': 'top'}),  # Map Column 70%
-
+    ], style={'width': '60%', 'display': 'inline-block', 'verticalAlign': 'top'}),  # Map Column 70%
+    
     # Second column for the image and dropdown
     html.Div([
         html.H1("평면구조도"),
-        dcc.Dropdown(
-            id='image-dropdown',
-            options=[
-                {'label': '007', 'value': '007'},
-                {'label': '010', 'value': '010'},
-                {'label': '018', 'value': '018'},
-                {'label': '054', 'value': '054'},
-                {'label': '065', 'value': '065'}
-            ],
-            value='007',
-            clearable=False,
-        ),
         html.Div(id='image-container', children=[
             html.Img(id='dynamic-image', style={'width': '100%', 'height': '300px'})  # Fixed size for the images
-        ])
-    ], style={'width': '28%', 'display': 'inline-block', 'padding-left': '2%', 'verticalAlign': 'top'})  # Image Column 30%
+        ]),
+        
+        # New Div to display property details
+        html.Div(id='property-details', style={'padding-top': '20px', 'font-size': '18px', 'border': '1px solid #ddd', 'padding': '10px', 'backgroundColor': '#f9f9f9'})  # Style as needed
+    ], style={'width': '35%', 'display': 'inline-block', 'padding-left': '2%', 'verticalAlign': 'top'})  # Image Column 30%
 ])
 
-# Consolidated callback to handle map style, zoom changes, and dropdown location selection
+# Callback to update the map's color and style without recreating the entire figure
 @app.callback(
     Output('mapbox-graph', 'figure'),
     [Input('map-style-radio', 'value'),
-     Input('zoom-slider', 'value'),
-     Input('image-dropdown', 'value')],
-    [State('mapbox-graph', 'relayoutData'),
-     State('mapbox-graph', 'figure')]
-)
-def update_map(style, zoom_level, selected_value, relayout_data, current_fig):
-    # Update map style
-    current_fig['layout']['mapbox'].update(style=style)
-    
-    # Update map zoom level
-    if relayout_data and 'mapbox.center' in relayout_data:
-        center = relayout_data['mapbox.center']
-    else:
-        center = current_fig['layout']['mapbox']['center']
-    
-    current_fig['layout']['mapbox'].update(zoom=zoom_level, center=center)
+     Input('color-data-dropdown', 'value'),
+     Input('zoom-slider', 'value')]
+     )
 
-    # Update map center based on selected dropdown option
-    if selected_value:
-        selected_row = final[final['번호'] == int(selected_value)]
-        if not selected_row.empty:
-            lat = selected_row['x'].values[0]
-            lon = selected_row['y'].values[0]
-            current_fig['layout']['mapbox'].update(center=dict(lat=lat, lon=lon))
+def update_map(style, color_column, zoom_level):
+    # Update the color of the markers dynamically
+    fig.data[0].marker.color = final[color_column]
 
-    return current_fig
+    # Update the map style and zoom level
+    fig.update_layout(
+        mapbox_style=style,
+        mapbox_zoom=zoom_level
+    )
+
+    return fig
+
 
 # Callback to update the image in the second column based on dropdown selection
 @app.callback(
-    Output('dynamic-image', 'src'),
+    [Output('dynamic-image', 'src'),
+     Output('property-details', 'children')],
     Input('image-dropdown', 'value')
 )
-def update_image(selected_value):
-    # Map the selected value to corresponding image URLs (replace with your actual image paths)
+def update_image_and_details(selected_value):
+    # Map the selected value to corresponding image URLs
     image_urls = {
-        '007': 'https://www.khug.or.kr/updata/khgc/khgccms/cms/upload/1264/20241002183532907.jpg',
-        '010': 'https://www.khug.or.kr/updata/khgc/khgccms/cms/upload/1264/20241002182133316.jpg',
-        '018': 'https://www.khug.or.kr/updata/khgc/khgccms/cms/upload/1264/20240926165705645.png',
-        '054': 'https://www.khug.or.kr/updata/khgc/khgccms/cms/upload/1264/20240926173347688.jpg',
-        '065': 'https://www.khug.or.kr/updata/khgc/khgccms/cms/upload/1264/20241002183726279.jpg'
+        f'{num:03d}':img_url for idx, num, img_url in final.filter(regex = '번호|img').itertuples()
     }
-    return image_urls.get(selected_value, '')
+
+    selected_row = final[final['번호'] == int(selected_value)]
+
+    if not selected_row.empty:
+        row = selected_row.iloc[0]
+        details = [
+            html.P(f"번호: {row['번호']}"),
+            html.P(f"주소: {row['주소']}"),
+            html.P(f"주택유형: {row['주택유형']}"),
+            html.P(f"전용면적: {round(row['m2'] / 3.30579, 1)}평"),
+            html.P(f"보증금: {int(row['deposit'])}만원"),
+            html.P(f"가장 가까운 역까지 거리: {row['near_station']}까지 {int(row['distanceM_near_station'])}m"),
+            html.P(f"회사까지 예상 소요 시간: {round(row['expected_time'], 1)}분"),
+            html.P(f"신청자수: {row['신청자수']}명")
+        ]
+    else:
+        details = [html.P("No details available for this selection.")]
+
+    return image_urls.get(selected_value, ''), details
 
 
 server = app.server
