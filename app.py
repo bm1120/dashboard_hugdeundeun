@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 app = dash.Dash(__name__)
 
 # Sample DataFrame - replace with your data
-ffinal = pd.read_csv('final_241007.csv')
+ffinal = pd.read_csv('data/final_241007.csv')
 final = ffinal.query('deposit < 13000 & expected_time < 90').copy()
 
 # Initial map figure

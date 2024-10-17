@@ -10,4 +10,4 @@ geopandas
 openpyxl
 dash
 plotly
-streamlit
+gunicorn
