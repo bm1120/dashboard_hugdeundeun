@@ -1,4 +1,4 @@
 # dashboard_hugdeundeun
 - 크롤링 데이터 기반 대시보드 생성
 - 크롤링 대상 사이트의 불안정성으로 데이터를 실시간으로 받아오는게 아닌 크롤링 파일 업데이터 형식으로 진행됨
-https://dashboard-hugdeundeun.onrender.com/
+- https://dashboard-hugdeundeun.onrender.com/
