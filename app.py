@@ -214,7 +214,8 @@ def update_image_and_details_from_click(clickData):
                 html.P(f"보증금: {int(row['deposit'])}만원"),
                 html.P(f"가장 가까운 역까지 거리: {row['near_station']}까지 {int(row['distanceM_near_station'])}m"),
                 html.P(f"회사까지 예상 소요 시간: {round(row['expected_time'], 1)}분"),
-                html.P(f"신청자수: {row['신청자수']}명")
+                html.P(f"신청자수: {row['신청자수']}명"),
+                html.P(f"로드뷰: https://map.kakao.com/link/roadview/{row['x']},{row['y']}")
             ]
 
             return image_urls.get(f'{int(selected_number):03d}', ''), details
